@@ -203,7 +203,7 @@
             width: 100%;
         }
 
-        /* Profile Positions matching Home Zones Pockets */
+        /* Profile Positions */
         .red-profile    { top: -20px; left: -20px; border-color: #ff4757; }
         .green-profile  { top: -20px; right: -20px; border-color: #2ed573; }
         .blue-profile   { bottom: -20px; left: -20px; border-color: #1e90ff; }
@@ -235,12 +235,12 @@
             box-shadow: 0 4px 0 #bdc3c7;
             transition: transform 0.1s ease;
             opacity: 0.4;
-            pointer-events: none; /* Disabled when not turn */
+            pointer-events: none;
         }
 
         .player-profile.active-turn .dice-box {
             opacity: 1;
-            pointer-events: auto; /* Active during turn */
+            pointer-events: auto;
             animation: pulse-glow 1.5s infinite alternate;
         }
 
@@ -348,6 +348,7 @@
                 </div>
             </div>
 
+            <!-- Player Count is now always visible -->
             <div class="input-group" id="player-count-wrapper">
                 <label for="player-count">Players Count:</label>
                 <select id="player-count">
@@ -372,7 +373,6 @@
 
             <div class="game-layout-grid">
                 
-                <!-- 4 Real Profile Cards with Separate Dice Inside -->
                 <div id="profile-red" class="player-profile red-profile">
                     <div class="profile-name red-text">Player Red</div>
                     <div id="dice-red" class="dice-box" onclick="handleDiceRoll('red')">
@@ -401,9 +401,8 @@
                     </div>
                 </div>
 
-                <!-- Main Ludo Board Canvas Grid -->
+                <!-- Main Ludo Board -->
                 <div class="ludo-board" id="ludo-board">
-                    <!-- Red Pocket -->
                     <div class="home-zone red-home" style="grid-area: 1 / 1 / 7 / 7;">
                         <div class="inner-box">
                             <div class="token-slot red-slot" data-color="red" data-index="0"></div>
@@ -412,7 +411,6 @@
                             <div class="token-slot red-slot" data-color="red" data-index="3"></div>
                         </div>
                     </div>
-                    <!-- Green Pocket -->
                     <div class="home-zone green-home" style="grid-area: 1 / 10 / 7 / 16;">
                         <div class="inner-box">
                             <div class="token-slot green-slot" data-color="green" data-index="0"></div>
@@ -421,7 +419,6 @@
                             <div class="token-slot green-slot" data-color="green" data-index="3"></div>
                         </div>
                     </div>
-                    <!-- Blue Pocket -->
                     <div class="home-zone blue-home" style="grid-area: 10 / 1 / 16 / 7;">
                         <div class="inner-box">
                             <div class="token-slot blue-slot" data-color="blue" data-index="0"></div>
@@ -430,7 +427,6 @@
                             <div class="token-slot blue-slot" data-color="blue" data-index="3"></div>
                         </div>
                     </div>
-                    <!-- Yellow Pocket -->
                     <div class="home-zone yellow-home" style="grid-area: 10 / 10 / 16 / 16;">
                         <div class="inner-box">
                             <div class="token-slot yellow-slot" data-color="yellow" data-index="0"></div>
@@ -439,7 +435,6 @@
                             <div class="token-slot yellow-slot" data-color="yellow" data-index="3"></div>
                         </div>
                     </div>
-                    <!-- Center Triangular Goal -->
                     <div class="center-goal" style="grid-area: 7 / 7 / 10 / 10;">
                         <svg viewBox="0 0 100 100" style="width:100%; height:100%;">
                             <polygon points="0,0 50,50 0,100" fill="#2980b9" />
@@ -458,7 +453,6 @@
 
     <!-- JAVASCRIPT GAME REALTIME ENGINE -->
     <script>
-        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyBMUSYaSwnBOuwPQfZoPFbN7CW4_WiZ45A",
             authDomain: "aryan-ludo.firebaseapp.com",
@@ -486,7 +480,6 @@
         let roomId = "";
         let localColors = [];
 
-        // Exact Coordinates Map Ring Track 
         const mainTrack = [
             {r:7,c:2},{r:7,c:3},{r:7,c:4},{r:7,c:5},{r:7,c:6}, 
             {r:6,c:7},{r:5,c:7},{r:4,c:7},{r:3,c:7},{r:2,c:7},{r:1,c:7},
@@ -531,11 +524,12 @@
             setupEvents();
             renderTokens();
 
+            // FIX: Player count visibility for online mode
             document.getElementById('game-mode').addEventListener('change', (e) => {
                 const mode = e.target.value;
                 if (mode === 'online') {
                     document.getElementById('online-options').classList.remove('hidden');
-                    document.getElementById('player-count-wrapper').classList.add('hidden');
+                    document.getElementById('player-count-wrapper').classList.remove('hidden');
                 } else {
                     document.getElementById('online-options').classList.add('hidden');
                     document.getElementById('player-count-wrapper').classList.remove('hidden');
@@ -584,22 +578,32 @@
         function startGame() {
             playerMode = document.getElementById('game-mode').value;
             
+            // FIX: Player count logic works for online too
+            const count = parseInt(document.getElementById('player-count').value);
+            if (count === 2) activePlayers = ['red', 'yellow'];
+            else if (count === 3) activePlayers = ['red', 'green', 'yellow'];
+            else activePlayers = ['red', 'green', 'yellow', 'blue'];
+
+            // Hide inactive profiles
+            colors.forEach(c => {
+                if (!activePlayers.includes(c)) {
+                    document.getElementById(`profile-${c}`).style.display = 'none';
+                }
+            });
+
             if (playerMode === 'online') {
                 roomId = document.getElementById('room-id').value.trim();
                 if (!roomId) { alert("Please enter valid Room ID!"); return; }
 
                 localColors = [];
-                document.querySelectorAll('.color-selector:checked').forEach(cb => localColors.push(cb.value));
+                document.querySelectorAll('.color-selector:checked').forEach(cb => {
+                    localColors.push(cb.value);
+                });
                 if (localColors.length === 0) { alert("Select at least one color!"); return; }
 
                 document.getElementById('room-display-text').innerText = `Room: ${roomId}`;
                 initOnlineRoom();
             } else {
-                const count = parseInt(document.getElementById('player-count').value);
-                if (count === 2) activePlayers = ['red', 'yellow'];
-                else if (count === 3) activePlayers = ['red', 'green', 'yellow'];
-                else activePlayers = ['red', 'green', 'yellow', 'blue'];
-                
                 localColors = [...activePlayers];
                 document.getElementById('setup-screen').classList.add('hidden');
                 document.getElementById('game-screen').classList.remove('hidden');
@@ -618,7 +622,7 @@
                         currentTurnIndex: 0,
                         currentRollValue: 1,
                         hasRolled: false,
-                        activePlayers: ['red', 'green', 'yellow', 'blue']
+                        activePlayers: activePlayers // FIX: Syncs selected player count
                     });
                 }
             });
@@ -634,7 +638,8 @@
 
                 const diceFaces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
                 colors.forEach(c => {
-                    document.getElementById(`dice-value-${c}`).innerText = diceFaces[currentRollValue - 1];
+                    const diceEl = document.getElementById(`dice-value-${c}`);
+                    if (diceEl) diceEl.innerText = diceFaces[currentRollValue - 1];
                 });
 
                 renderTokens();
@@ -659,11 +664,12 @@
         function updateTurnUI() {
             const activeColor = activePlayers[currentTurnIndex];
             
-            // Highlight current player profile card
             colors.forEach(c => {
-                document.getElementById(`profile-${c}`).classList.remove('active-turn');
+                const profile = document.getElementById(`profile-${c}`);
+                if (profile) profile.classList.remove('active-turn');
             });
-            document.getElementById(`profile-${activeColor}`).classList.add('active-turn');
+            const activeProfile = document.getElementById(`profile-${activeColor}`);
+            if (activeProfile) activeProfile.classList.add('active-turn');
 
             const el = document.getElementById('active-player-name');
             el.innerText = activeColor.charAt(0).toUpperCase() + activeColor.slice(1);
@@ -688,7 +694,7 @@
             if (hasRolled) return;
             const activeColor = activePlayers[currentTurnIndex];
             
-            if (clickedColor !== activeColor) return; // Prevent clicking someone else's dice
+            if (clickedColor !== activeColor) return; 
             if (playerMode === 'online' && !localColors.includes(activeColor)) return;
             
             triggerDiceRollProcess(activeColor);
@@ -784,7 +790,6 @@
             let extraTurn = (steps === 6);
             const finalPos = tokensState[color][index].pos;
             
-            // Kill Logic Tracker
             if (finalPos > 0 && finalPos <= 50) {
                 let currentMainIndex = (startOffsets[color] + finalPos) % 52;
                 if (!safeZones.includes(currentMainIndex)) {
@@ -847,7 +852,6 @@
                 });
             });
 
-            // Handle Overlaps on single cell
             document.querySelectorAll('.cell').forEach(cell => {
                 let tokensInCell = cell.querySelectorAll('.token');
                 if(tokensInCell.length > 1) {
